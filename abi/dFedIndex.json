@@ -68,6 +68,77 @@
 		"type": "function"
 	},
 	{
+		"constant": false,
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_token",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_baseTokenAmountDesired",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_tokenAmountDesired",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_baseTokenAmountMin",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_tokenAmountMin",
+				"type": "uint256"
+			},
+			{
+				"internalType": "address",
+				"name": "_to",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_deadline",
+				"type": "uint256"
+			},
+			{
+				"internalType": "bool",
+				"name": "_approveMax",
+				"type": "bool"
+			},
+			{
+				"internalType": "uint8",
+				"name": "_v",
+				"type": "uint8"
+			},
+			{
+				"internalType": "bytes32",
+				"name": "_r",
+				"type": "bytes32"
+			},
+			{
+				"internalType": "bytes32",
+				"name": "_s",
+				"type": "bytes32"
+			}
+		],
+		"name": "addLiquidityWithPermit",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "_liquidity",
+				"type": "uint256"
+			}
+		],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
 		"constant": true,
 		"inputs": [],
 		"name": "baseToken",
@@ -112,6 +183,61 @@
 			}
 		],
 		"name": "buyToken",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_token",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_amountIn",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_amountOutMin",
+				"type": "uint256"
+			},
+			{
+				"internalType": "address",
+				"name": "_to",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_deadline",
+				"type": "uint256"
+			},
+			{
+				"internalType": "bool",
+				"name": "_approveMax",
+				"type": "bool"
+			},
+			{
+				"internalType": "uint8",
+				"name": "_v",
+				"type": "uint8"
+			},
+			{
+				"internalType": "bytes32",
+				"name": "_r",
+				"type": "bytes32"
+			},
+			{
+				"internalType": "bytes32",
+				"name": "_s",
+				"type": "bytes32"
+			}
+		],
+		"name": "buyTokenWithPermit",
 		"outputs": [],
 		"payable": false,
 		"stateMutability": "nonpayable",
@@ -336,6 +462,51 @@
 			}
 		],
 		"name": "repay",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_token",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_debtId",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_value",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_deadline",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint8",
+				"name": "_v",
+				"type": "uint8"
+			},
+			{
+				"internalType": "bytes32",
+				"name": "_r",
+				"type": "bytes32"
+			},
+			{
+				"internalType": "bytes32",
+				"name": "_s",
+				"type": "bytes32"
+			}
+		],
+		"name": "repayWithPermit",
 		"outputs": [],
 		"payable": false,
 		"stateMutability": "nonpayable",
