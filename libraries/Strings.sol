@@ -29,7 +29,7 @@ library Strings {
     function concat(slice memory self, slice memory other) internal pure returns (string memory) {
         string memory ret = new string(self._len + other._len);
         uint retptr;
-        assembly { retptr := add(ret, 32) }
+        assembly {retptr := add(ret, 32)}
         memcpy(retptr, self._ptr, self._len);
         memcpy(retptr + self._len, other._ptr, other._len);
         return ret;
@@ -38,7 +38,7 @@ library Strings {
 
     function memcpy(uint dest, uint src, uint len) private pure {
         // Copy word-length chunks while possible
-        for(; len >= 32; len -= 32) {
+        for (; len >= 32; len -= 32) {
             assembly {
                 mstore(dest, mload(src))
             }

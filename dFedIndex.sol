@@ -4,6 +4,7 @@ import './libraries/TransferHelper.sol';
 import './libraries/dFedLibrary.sol';
 import './interfaces/IdFedFactory.sol';
 import './interfaces/IdFedPair.sol';
+import './interfaces/IdFedERC20.sol';
 
 contract dFedIndex {
     address public factory;
@@ -19,6 +20,21 @@ contract dFedIndex {
         _;
     }
 
+    function addLiquidityWithPermit(
+        address _token,
+        uint _baseTokenAmountDesired,
+        uint _tokenAmountDesired,
+        uint _baseTokenAmountMin,
+        uint _tokenAmountMin,
+        address _to,
+        uint _deadline,
+        bool _approveMax, uint8 _v, bytes32 _r, bytes32 _s
+    ) public ensure(_deadline) returns (uint _liquidity) {
+        uint _value = _approveMax ? uint(- 1) : _baseTokenAmountDesired;
+        IdFedERC20(baseToken).permit(msg.sender, address(this), _value, _deadline, _v, _r, _s);
+        _liquidity = addLiquidity(_token, _baseTokenAmountDesired, _tokenAmountDesired, _baseTokenAmountMin, _tokenAmountMin, _to, _deadline);
+    }
+
     function addLiquidity(
         address _token,
         uint _baseTokenAmountDesired,
@@ -30,13 +46,13 @@ contract dFedIndex {
     ) public ensure(_deadline) returns (uint _liquidity) {
         // create the pair if it doesn't exist yet
         address _pair = IdFedFactory(factory).getPair(_token);
-        if ( _pair == address(0)) {
+        if (_pair == address(0)) {
             _pair = IdFedFactory(factory).createPair(_token);
         }
 
         uint _amount0;
         uint _amount1;
-        (uint _reserve0, uint _reserve1)  = IdFedPair(_pair).getReserves();
+        (uint _reserve0, uint _reserve1) = IdFedPair(_pair).getReserves();
         if (_reserve0 == 0 && _reserve1 == 0) {
             (_amount0, _amount1) = (_baseTokenAmountDesired, _tokenAmountDesired);
         } else {
@@ -67,9 +83,9 @@ contract dFedIndex {
         bool _approveMax, uint8 _v, bytes32 _r, bytes32 _s
     ) external returns (uint _amount0, uint _amount1) {
         address _pair = getPair(_token);
-        uint _value = _approveMax ? uint(-1) : _liquidity;
+        uint _value = _approveMax ? uint(- 1) : _liquidity;
         IdFedPair(_pair).permit(msg.sender, address(this), _value, _deadline, _v, _r, _s);
-        (_amount0, _amount1) = removeLiquidity(_pair, _liquidity, _to,  _amount0Min, _amount1Min, _deadline);
+        (_amount0, _amount1) = removeLiquidity(_pair, _liquidity, _to, _amount0Min, _amount1Min, _deadline);
     }
 
     function removeLiquidity(address _pair, uint _liquidity, address _to, uint _amount0Min, uint _amount1Min, uint _deadline) public ensure(_deadline) returns (uint _amount0, uint _amount1) {
@@ -77,6 +93,19 @@ contract dFedIndex {
         (_amount0, _amount1) = IdFedPair(_pair).burn(_to);
         require(_amount0 >= _amount0Min, 'dFedIndex: INSUFFICIENT_OUTPUT_AMOUNT0');
         require(_amount1 >= _amount1Min, 'dFedIndex: INSUFFICIENT_OUTPUT_AMOUNT1');
+    }
+
+    function buyTokenWithPermit(
+        address _token,
+        uint _amountIn,
+        uint _amountOutMin,
+        address _to,
+        uint _deadline,
+        bool _approveMax, uint8 _v, bytes32 _r, bytes32 _s
+    ) public ensure(_deadline) {
+        uint _value = _approveMax ? uint(- 1) : _amountIn;
+        IdFedERC20(baseToken).permit(msg.sender, address(this), _value, _deadline, _v, _r, _s);
+        buyToken(_token, _amountIn, _amountOutMin, _to, _deadline);
     }
 
     function buyToken(
@@ -87,7 +116,7 @@ contract dFedIndex {
         uint _deadline
     ) public ensure(_deadline) {
         address _pair = getPair(_token);
-        TransferHelper.safeTransferFrom(baseToken, msg.sender,_pair, _amountIn);
+        TransferHelper.safeTransferFrom(baseToken, msg.sender, _pair, _amountIn);
         IdFedPair(_pair).buyToken(_amountIn, _amountOutMin, _to);
     }
 
@@ -99,7 +128,7 @@ contract dFedIndex {
         uint _deadline
     ) public ensure(_deadline) {
         address _pair = getPair(_token);
-        TransferHelper.safeTransferFrom(_token, msg.sender,_pair, _amountIn);
+        TransferHelper.safeTransferFrom(_token, msg.sender, _pair, _amountIn);
         IdFedPair(_pair).sellToken(_amountIn, _amountOutMin, _to);
     }
 
@@ -109,10 +138,22 @@ contract dFedIndex {
         uint _targetNum,
         address _to,
         uint _deadline
-    ) public ensure(_deadline) returns(uint _debtId) {
+    ) public ensure(_deadline) returns (uint _debtId) {
         address _pair = getPair(_token);
         TransferHelper.safeTransferFrom(_token, msg.sender, _pair, _pledgeAmount);
         _debtId = IdFedPair(_pair).mortgage(_pledgeAmount, _targetNum, _to);
+    }
+
+
+    function repayWithPermit(
+        address _token,
+        uint _debtId,
+        uint _value,
+        uint _deadline,
+        uint8 _v, bytes32 _r, bytes32 _s
+    ) public ensure(_deadline) {
+        IdFedERC20(baseToken).permit(msg.sender, address(this), _value, _deadline, _v, _r, _s);
+        repay(_token, _debtId, _deadline);
     }
 
     function repay(
@@ -127,8 +168,8 @@ contract dFedIndex {
         IdFedPair(_pair).repay(_debtId);
     }
 
-    function getPair(address _token) public view returns(address _pair) {
+    function getPair(address _token) public view returns (address _pair) {
         _pair = IdFedFactory(factory).getPair(_token);
-        require( _pair != address(0), 'dFedIndex: TOKEN_PAIR_DOES_NOT_EXIST');
+        require(_pair != address(0), 'dFedIndex: TOKEN_PAIR_DOES_NOT_EXIST');
     }
 }

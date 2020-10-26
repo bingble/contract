@@ -31,7 +31,7 @@ interface IdFedPair {
 
     function nonces(address owner) external view returns (uint);
 
-    function initialize(address, address) external;
+    function initialize(address, address, uint8) external;
 
     function sellToken(uint amountIn, uint amountOutMin, address to) external;
 

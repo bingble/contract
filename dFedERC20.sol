@@ -4,7 +4,7 @@ import './libraries/Math.sol';
 import './libraries/Strings.sol';
 import './interfaces/IERC20.sol';
 
-contract dFedERC20  {
+contract dFedERC20 {
     using Math for uint;
     using Strings for *;
     string public name;
@@ -60,7 +60,7 @@ contract dFedERC20  {
     }
 
     function transferFrom(address from, address to, uint value) external returns (bool) {
-        if (allowance[from][msg.sender] != uint(-1)) {
+        if (allowance[from][msg.sender] != uint(- 1)) {
             allowance[from][msg.sender] = allowance[from][msg.sender].sub(value);
         }
         _transfer(from, to, value);
