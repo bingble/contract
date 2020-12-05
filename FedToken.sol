@@ -6,8 +6,8 @@ import './libraries/TransferHelper.sol';
 contract Fed {
     using Math for uint;
 
-    string public name = 'FED';
-    string public symbol = 'FED';
+    string public name = 'alpha FED';
+    string public symbol = 'aFED';
     uint8 public decimals = 18;
     uint  public totalSupply;
     mapping(address => uint) public balanceOf;
@@ -15,8 +15,6 @@ contract Fed {
 
     event Approval(address indexed owner, address indexed spender, uint value);
     event Transfer(address indexed from, address indexed to, uint value);
-    event Deposit(address indexed from, address indexed to, uint value);
-    event Withdraw(address indexed from, uint value);
     event Stopped();
     event Running();
 
@@ -78,58 +76,58 @@ contract Fed {
         emit Running();
     }
 
-    function _transfer(address from, address to, uint value) private {
-        balanceOf[from] = balanceOf[from].sub(value);
-        balanceOf[to] = balanceOf[to].add(value);
-        emit Transfer(from, to, value);
+    function _transfer(address _from, address _to, uint _value) private {
+        balanceOf[_from] = balanceOf[_from].sub(_value);
+        balanceOf[_to] = balanceOf[_to].add(_value);
+        emit Transfer(_from, _to, _value);
     }
 
-    function approve(address spender, uint value) external returns (bool) {
-        _approve(msg.sender, spender, value);
+    function approve(address _spender, uint _value) external returns (bool) {
+        _approve(msg.sender, _spender, _value);
         return true;
     }
 
-    function _approve(address owner, address spender, uint value) private {
-        allowance[owner][spender] = value;
-        emit Approval(owner, spender, value);
+    function _approve(address _owner, address _spender, uint _value) private {
+        allowance[_owner][_spender] = _value;
+        emit Approval(_owner, _spender, _value);
     }
 
-    function transfer(address to, uint value) external isRunning returns (bool) {
-        _transfer(msg.sender, to, value);
+    function transfer(address _to, uint _value) external isRunning returns (bool) {
+        _transfer(msg.sender, _to, _value);
         return true;
     }
 
-    function transferFrom(address from, address to, uint value) external isRunning returns (bool) {
-        if (allowance[from][msg.sender] != uint(- 1)) {
-            allowance[from][msg.sender] = allowance[from][msg.sender].sub(value);
+    function transferFrom(address _from, address _to, uint _value) external isRunning returns (bool) {
+        if (allowance[_from][msg.sender] != uint(- 1)) {
+            allowance[_from][msg.sender] = allowance[_from][msg.sender].sub(_value);
         }
-        _transfer(from, to, value);
+        _transfer(_from, _to, _value);
         return true;
     }
 
-    function mint(address to, uint value) external onlyFactory {
-        totalSupply = totalSupply.add(value);
-        balanceOf[to] = balanceOf[to].add(value);
-        emit Transfer(address(0), to, value);
+    function mint(address _to, uint _value) external onlyFactory {
+        totalSupply = totalSupply.add(_value);
+        balanceOf[_to] = balanceOf[_to].add(_value);
+        emit Transfer(address(0), _to, _value);
     }
 
-    function burn(address from, uint value) external onlyFactory {
-        balanceOf[from] = balanceOf[from].sub(value);
-        totalSupply = totalSupply.sub(value);
-        emit Transfer(from, address(0), value);
+    function burn(address _from, uint _value) external onlyFactory {
+        balanceOf[_from] = balanceOf[_from].sub(_value);
+        totalSupply = totalSupply.sub(_value);
+        emit Transfer(_from, address(0), _value);
     }
 
-    function permit(address form, address spender, uint value, uint deadline, uint8 v, bytes32 r, bytes32 s) external {
-        require(deadline >= block.timestamp, 'USDD: EXPIRED');
+    function permit(address _from, address _spender, uint _value, uint _deadline, uint8 _v, bytes32 _r, bytes32 _s) external {
+        require(_deadline >= block.timestamp, 'FED: EXPIRED');
         bytes32 digest = keccak256(
             abi.encodePacked(
                 '\x19\x01',
                 DOMAIN_SEPARATOR,
-                keccak256(abi.encode(PERMIT_TYPEHASH, form, spender, value, nonces[form]++, deadline))
+                keccak256(abi.encode(PERMIT_TYPEHASH, _from, _spender, _value, nonces[_from]++, _deadline))
             )
         );
-        address recoveredAddress = ecrecover(digest, v, r, s);
-        require(recoveredAddress != address(0) && recoveredAddress == form, 'USDD: INVALID_SIGNATURE');
-        _approve(form, spender, value);
+        address recoveredAddress = ecrecover(digest, _v, _r, _s);
+        require(recoveredAddress != address(0) && recoveredAddress == _from, 'FED: INVALID_SIGNATURE');
+        _approve(_from, _spender, _value);
     }
 }
