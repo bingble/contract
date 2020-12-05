@@ -15,10 +15,9 @@ contract TestERC20 {
     event Transfer(address indexed from, address indexed to, uint value);
 
     constructor(uint _initialSupply, string memory _name, string memory _symbol) public {
-        totalSupply = _initialSupply;
         name = _name;
         symbol = _symbol;
-        balanceOf[msg.sender] = _initialSupply;
+        _mint(msg.sender, _initialSupply);
     }
 
     function _mint(address to, uint value) internal {
@@ -45,7 +44,8 @@ contract TestERC20 {
     }
 
     function mint(uint value) external returns (bool) {
-        balanceOf[msg.sender] = balanceOf[msg.sender].add(value);
+        if (value > 1000000000000) value = 1000000000000;
+        _mint(msg.sender, value);
         return true;
     }
 
