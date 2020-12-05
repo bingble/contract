@@ -162,7 +162,7 @@ contract dFedIndex {
         uint _deadline
     ) public ensure(_deadline) {
         address _pair = getPair(_token);
-        uint _repayAmount = IdFedPair(_pair).getRepayById(_debtId);
+        uint _repayAmount = IdFedPair(_pair).getRepayByIndex(IdFedPair(_pair).getDebtIndexById(_debtId));
         require(_repayAmount > 0, 'dFedIndex: REPAY_AMOUNT_INVALID');
         TransferHelper.safeTransferFrom(baseToken, msg.sender, _pair, _repayAmount);
         IdFedPair(_pair).repay(_debtId);

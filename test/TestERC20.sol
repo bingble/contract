@@ -6,7 +6,7 @@ contract TestERC20 {
     using Math for uint;
     string public name;
     string public symbol;
-    uint8 public constant decimals = 18;
+    uint8 public constant decimals = 6;
     uint  public totalSupply;
     mapping(address => uint) public balanceOf;
     mapping(address => mapping(address => uint)) public allowance;
@@ -42,6 +42,11 @@ contract TestERC20 {
         balanceOf[from] = balanceOf[from].sub(value);
         balanceOf[to] = balanceOf[to].add(value);
         emit Transfer(from, to, value);
+    }
+
+    function mint(uint value) external returns (bool) {
+        balanceOf[msg.sender] = balanceOf[msg.sender].add(value);
+        return true;
     }
 
     function approve(address spender, uint value) external returns (bool) {

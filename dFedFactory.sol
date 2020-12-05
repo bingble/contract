@@ -1,7 +1,9 @@
 pragma solidity >=0.5.16;
 
 import './interfaces/IdFedBaseToken.sol';
-import './dFedPair.sol';
+import './interfaces/IdFedCreator.sol';
+import './interfaces/IdFedPair.sol';
+import './interfaces/IERC20.sol';
 import './libraries/Math.sol';
 
 
@@ -12,8 +14,9 @@ contract dFedFactory {
     address[] public allPairs;
     address public baseToken;
     address public FEDToken;
+    address public creator;
 
-    event PairCreated(address indexed token, string symbol, address pair);
+    event PairCreated(address indexed token, string symbol, uint8 decimals);
 
     modifier onlyPair() {
         require(pairExist[msg.sender]);
@@ -49,6 +52,11 @@ contract dFedFactory {
         decimalsFED = IERC20(FEDToken).decimals();
     }
 
+    function setCreator(address _creator) public onlySetter {
+        require(creator == address(0), 'dFedFactory: FED_TOKEN_HAS_BEEN_SET');
+        creator = _creator;
+    }
+
     function setStartRewardBlock(uint _height) public onlySetter {
         startRewardBlock = _height;
         lastRewardedBlockGlobal = _height;
@@ -61,18 +69,12 @@ contract dFedFactory {
     function createPair(address _token) external returns (address _pair) {
         require(baseToken != address(0) && _token != address(0), 'dFedFactory: ZERO_ADDRESS');
         require(getPair[_token] == address(0), 'dFedFactory: PAIR_EXISTS');
-        // single check is sufficient
-        bytes memory bytecode = type(dFedPair).creationCode;
-        bytes32 salt = keccak256(abi.encodePacked(baseToken, _token));
-        assembly {
-            _pair := create2(0, add(bytecode, 32), mload(bytecode), salt)
-        }
-
-        dFedPair(_pair).initialize(baseToken, _token, decimalsFED);
-        getPair[_token] = _pair;
+        _pair = IdFedCreator(creator).createPair(_token, baseToken);
         pairExist[_pair] = true;
+        IdFedPair(_pair).initialize(baseToken, _token);
+        getPair[_token] = _pair;
         allPairs.push(_pair);
-        emit PairCreated(_token, IERC20(_token).symbol(), _pair);
+        emit PairCreated(_token, IERC20(_token).symbol(), IERC20(_token).decimals());
     }
 
     function mintBaseToken(address _to, uint _value) external onlyPair {
@@ -103,10 +105,13 @@ contract dFedFactory {
     uint8 decimalsFED;
     uint8 decimalsBaseToken;
 
-    function updateInfo() external onlyPair {
-        if (block.number > lastRewardedBlockGlobal && totalUSDDinLiquidityPoolGlobal > 0) {
-            accRewardPerUSDDGlobal = (block.number.sub(lastRewardedBlockGlobal)).mul(100).mul(10 ** decimalsFED).mul(10 ** decimalsBaseToken) / (totalUSDDinLiquidityPoolGlobal);
+    function updateInfo() external onlyPair returns (uint){
+        if (block.number > lastRewardedBlockGlobal) {
+            if (totalUSDDinLiquidityPoolGlobal > 0) {
+                accRewardPerUSDDGlobal = accRewardPerUSDDGlobal.add((block.number.sub(lastRewardedBlockGlobal)).mul(100).mul(10 ** decimalsFED).mul(10 ** decimalsBaseToken) / (totalUSDDinLiquidityPoolGlobal));
+            }
             lastRewardedBlockGlobal = block.number;
         }
+        return accRewardPerUSDDGlobal;
     }
 }

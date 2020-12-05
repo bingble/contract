@@ -1,7 +1,7 @@
 pragma solidity >=0.5.16;
 
 interface IdFedFactory {
-    event PairCreated(address indexed token, string symbol, address pair);
+    event PairCreated(address indexed token, string symbol, uint8 decimals);
 
     function getPair(address token) external view returns (address);
 
@@ -33,7 +33,7 @@ interface IdFedFactory {
 
     function removeTotalUSDDinLiquidityPoolGlobal(uint amount) external;
 
-    function updateInfo() external;
+    function updateInfo() external returns (uint);
 }
 
 

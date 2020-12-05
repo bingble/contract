@@ -3,9 +3,11 @@ pragma solidity >=0.5.16;
 interface IdFedPair {
     event Approval(address indexed owner, address indexed spender, uint value);
     event Transfer(address indexed from, address indexed to, uint value);
-    event DebtUpdate(address indexed owner, uint debtId, uint pledgeAmount, uint repayAmount);
+    event DebtUpdate(address indexed owner, uint debtId, uint pledgeAmount, uint repayAmount, uint debtToken0Amount, uint debtToken1Amount);
+    event Mortgage(address owner, uint pledgeAmount, uint targetNum);
+    event Repay(uint debtId);
     event Mint(address indexed sender, uint amount0, uint amount1);
-    event Burn(address indexed sender, uint amount0, uint amount1, address indexed to);
+    event Burn(address indexed sender, uint lpAmount, uint amount0, uint amount1, address indexed to);
 
     function name() external pure returns (string memory);
 
@@ -31,7 +33,7 @@ interface IdFedPair {
 
     function nonces(address owner) external view returns (uint);
 
-    function initialize(address, address, uint8) external;
+    function initialize(address, address) external;
 
     function sellToken(uint amountIn, uint amountOutMin, address to) external;
 
@@ -41,7 +43,8 @@ interface IdFedPair {
 
     function repay(uint debtId) external;
 
-    function getRepayById(uint debtId) external view returns (uint repayAmount);
+    function getRepayByIndex(uint index) external view returns (uint repayAmount);
+    function getDebtIndexById(uint id) external view returns (uint index);
 
     function getReserves() external view returns (uint reserve0, uint reserve1);
 

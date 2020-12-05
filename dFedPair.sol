@@ -7,7 +7,6 @@ contract dFedPair is dFedBank {
     using Math  for uint;
     constructor() public {
         debtInfos.push(debtInfo(address(0), 0, 0, 0, 0, 0, 0, 0));
-        factory = msg.sender;
     }
 
     event BuyToken(
@@ -25,7 +24,7 @@ contract dFedPair is dFedBank {
     );
 
     event Mint(address indexed sender, uint amount0, uint amount1);
-    event Burn(address indexed sender, uint amount0, uint amount1, address indexed to);
+    event Burn(address indexed sender, uint lpAmount, uint amount0, uint amount1, address indexed to);
 
     uint public constant MINIMUM_LIQUIDITY = 10 ** 3;
 
@@ -37,15 +36,18 @@ contract dFedPair is dFedBank {
     }
 
     // called once by the factory at time of deployment
-    function initialize(address _baseToken, address _token, uint8 _decimalsFED) external {
-        require(msg.sender == factory, 'dFedPair: FORBIDDEN');
+    function initialize(address _baseToken, address _token) external {
+        require(factory == address(0), 'dFedPair: FORBIDDEN');
+        factory = msg.sender;
         // sufficient check
+
         token0 = _baseToken;
         token1 = _token;
-        decimalsFED = _decimalsFED;
         decimalsBaseToken = IERC20(_baseToken).decimals();
         name = generateLpTokenName(_token);
         symbol = name;
+        lastReceivedRewardPerUSDDOfPair = IdFedFactory(factory).updateInfo();
+
         uint chainId;
         assembly {
             chainId := chainid()
@@ -107,7 +109,7 @@ contract dFedPair is dFedBank {
     // this low-level function should be called from a contract which performs important safety checks
     function mint(address _to, uint _amount0, uint _amount1) external lock returns (uint _liquidity) {
         require(_amount0 <= IERC20(token0).balanceOf(address(this)).sub(reserve0).sub(fee), 'dFedPair: INSUFFICIENT_AMOUNT_0');
-        require(_amount1 <= IERC20(token1).balanceOf(address(this)).sub(reserve1).sub(totalPledge), 'dFedPair: INSUFFICIENT_AMOUNT_1');
+        require(_amount1 <= IERC20(token1).balanceOf(address(this)).sub(reserve1).sub(totalPledge).sub(totalRefundToken1Amount), 'dFedPair: INSUFFICIENT_AMOUNT_1');
 
         uint _totalSupply = totalSupply;
         updateReward();
@@ -123,14 +125,13 @@ contract dFedPair is dFedBank {
         if (balanceOf[_to] == 0) {
             userRewardDebtPerFEDlp[_to] = accRewardPerFEDlpOfPair;
         } else {
-            userRewardDebtPerFEDlp[_to] = balanceOf[_to].mul(userRewardDebtPerFEDlp[_to]).add(totalSupply.mul(accRewardPerFEDlpOfPair) / (balanceOf[_to].add(totalSupply)));
+            userRewardDebtPerFEDlp[_to] = (balanceOf[_to].mul(userRewardDebtPerFEDlp[_to]).add(_liquidity.mul(accRewardPerFEDlpOfPair)) / (balanceOf[_to].add(_liquidity)));
         }
         _mint(_to, _liquidity);
 
         require((reserve0.add(_amount0)).mul(reserve1) >= (reserve1.add(_amount1).mul(reserve0)), 'dFedPair: INVALID_UPDATE');
         IdFedFactory(factory).addTotalUSDDinLiquidityPoolGlobal(_amount0);
-        reserve0 = reserve0.add(_amount0);
-        reserve1 = reserve1.add(_amount1);
+        updateReserves(reserve0.add(_amount0), reserve1.add(_amount1));
         // reserve0 and reserve1 are up-to-date
         emit Mint(_to, _amount0, _amount1);
     }
@@ -149,8 +150,7 @@ contract dFedPair is dFedBank {
         _burn(address(this), liquidity);
         (uint _getToken1Amount, uint _payToken0Amount, uint _refundToken0Amount) = overlapDebit(reserve0.sub(_amount0), reserve1.sub(_amount1));
         refundAmount[_to] = refundAmount[_to].add(_refundToken0Amount);
-        reserve0 = reserve0.sub(_amount0);
-        reserve1 = reserve1.sub(_amount1);
+        updateReserves(reserve0.sub(_amount0), reserve1.sub(_amount1));
         _amount1 = _amount1.add(_getToken1Amount);
         _amount0 = _amount0.sub(_payToken0Amount);
 
@@ -159,25 +159,26 @@ contract dFedPair is dFedBank {
         if (_amount1 > 0) TransferHelper.safeTransfer(token1, _to, _amount1);
         if (_amount0 > 0) TransferHelper.safeTransfer(token0, _to, _amount0);
         // reserve0 and reserve1 are up-to-date
-        emit Burn(msg.sender, _amount0, _amount1, _to);
+        emit Burn(msg.sender, liquidity, _amount0, _amount1, _to);
     }
 
     function withdrawToken0(address _to, uint _amount) public {
-        require(totalRefundToken0Amount > _amount, 'dFedPair: INSUFFICIENT_REFUND_BURNED');
         refundAmount[_to] = refundAmount[_to].sub(_amount);
+        totalRefundToken0Amount = totalRefundToken0Amount.sub(_amount);
         if (_amount > 0) TransferHelper.safeTransfer(token0, _to, _amount);
     }
 
+    // 输入 token0(usdd) 数目， 兑换 token1
     function withdrawToken1(address _to, uint _amount) public {
-        require(totalRefundToken1EqualToken0Amount > _amount, 'dFedPair: INSUFFICIENT_REFUND_BURNED');
         refundAmount[_to] = refundAmount[_to].sub(_amount);
-        uint _amount1 = _amount.mul(totalRefundToken1EqualToken0Amount) / totalRefundToken1Amount;
+        uint _amount1 = _amount.mul(totalRefundToken1Amount) / totalRefundToken1EqualToken0Amount;
+        totalRefundToken1EqualToken0Amount = totalRefundToken1EqualToken0Amount.sub(_amount);
+        totalRefundToken1Amount = totalRefundToken1Amount.sub(_amount1);
         if (_amount1 > 0) TransferHelper.safeTransfer(token1, _to, _amount1);
     }
 
     uint public accRewardPerFEDlpOfPair;
     uint public lastReceivedRewardPerUSDDOfPair;
-    uint8 decimalsFED;
     uint8 decimalsBaseToken;
 
     mapping(address => uint256) public userRewardDebtPerFEDlp;
@@ -187,11 +188,9 @@ contract dFedPair is dFedBank {
             return;
         }
 
-        IdFedFactory(factory).updateInfo();
-
-        uint accRewardPerUSDDGlobal = IdFedFactory(factory).accRewardPerUSDDGlobal();
+        uint accRewardPerUSDDGlobal = IdFedFactory(factory).updateInfo();
         if (lastReceivedRewardPerUSDDOfPair < accRewardPerUSDDGlobal && totalSupply > 0) {
-            accRewardPerFEDlpOfPair = accRewardPerUSDDGlobal.add((accRewardPerUSDDGlobal.sub(lastReceivedRewardPerUSDDOfPair)).mul(reserve0).mul(10 ** decimals) / (10 ** decimalsBaseToken) / (totalSupply));
+            accRewardPerFEDlpOfPair = accRewardPerFEDlpOfPair.add((accRewardPerUSDDGlobal.sub(lastReceivedRewardPerUSDDOfPair)).mul(reserve0).mul(10 ** decimals) / (10 ** decimalsBaseToken) / (totalSupply));
             lastReceivedRewardPerUSDDOfPair = accRewardPerUSDDGlobal;
         }
     }
@@ -199,6 +198,7 @@ contract dFedPair is dFedBank {
     function harvest(address _to) public {
         updateReward();
         IdFedFactory(factory).mintFEDToken(_to, balanceOf[_to].mul(accRewardPerFEDlpOfPair.sub(userRewardDebtPerFEDlp[_to])) / (10 ** decimals));
+        userRewardDebtPerFEDlp[_to] = accRewardPerFEDlpOfPair;
     }
 
 }
